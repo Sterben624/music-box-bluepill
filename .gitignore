@@ -1,0 +1,8 @@
+.pio/
+Debug/
+.settings/
+.cproject
+.project
+.mxproject
+*.launch
+.vscode/
