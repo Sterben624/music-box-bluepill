@@ -57,6 +57,18 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define PN532_RST_Pin GPIO_PIN_5
+#define PN532_RST_GPIO_Port GPIOA
+#define PN532_REQ_Pin GPIO_PIN_6
+#define PN532_REQ_GPIO_Port GPIOA
+#define IN1_MOTOR_Pin GPIO_PIN_12
+#define IN1_MOTOR_GPIO_Port GPIOB
+#define IN2_MOTOR_Pin GPIO_PIN_13
+#define IN2_MOTOR_GPIO_Port GPIOB
+#define IN3_MOTOR_Pin GPIO_PIN_14
+#define IN3_MOTOR_GPIO_Port GPIOB
+#define IN4_MOTOR_Pin GPIO_PIN_15
+#define IN4_MOTOR_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
