@@ -55,6 +55,12 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, IN1_MOTOR_Pin|IN2_MOTOR_Pin|IN3_MOTOR_Pin|IN4_MOTOR_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin : SW_KY040_EXTI_Pin */
+  GPIO_InitStruct.Pin = SW_KY040_EXTI_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(SW_KY040_EXTI_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : PN532_RST_Pin PN532_REQ_Pin */
   GPIO_InitStruct.Pin = PN532_RST_Pin|PN532_REQ_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -68,6 +74,10 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
 }
 
