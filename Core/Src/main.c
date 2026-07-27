@@ -27,7 +27,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "pn532_stm32f1.h"
+#include "df_player.h"
+#include "ssd1306.h"
+#include "ws2812b.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,7 +51,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+PN532 pn532;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,7 +101,23 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+	SSD1306_Init();
+	SSD1306_Clear();
+	SSD1306_WriteString("Waiting...");
+	SSD1306_UpdateScreen();
 
+	PN532_I2C_Init(&pn532);
+	uint8_t buff[255];
+	PN532_GetFirmwareVersion(&pn532, buff);
+	PN532_SamConfiguration(&pn532);
+
+	dfplayer_Init();
+	dfplayer_SetVolume(2);
+	dfplayer_SetSource(PLAYBACK_SOURCE_TF);
+
+	WS2812B_Init();
+
+	HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in cmsis_os2.c) */

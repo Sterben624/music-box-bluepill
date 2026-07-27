@@ -25,26 +25,17 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "pn532_stm32f1.h"
+#include "df_player.h"
+#include "ssd1306.h"
+#include "stepper.h"
+#include <string.h>
+#include <stdio.h>
+#include "ws2812b.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-/* USER CODE BEGIN Variables */
 typedef struct {
 	uint64_t uid;
 	int8_t   track_number;
@@ -56,13 +47,32 @@ typedef struct {
 	uint8_t is_paused;
 	uint8_t motor_running;
 } display_msg_t;
+/* USER CODE END PTD */
 
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+#define TAG_1 0x53c49bf6630001
+#define TAG_2 0x53539af6630001
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+/* USER CODE BEGIN Variables */
 osMessageQId RFID_QueueHandle;
 osMessageQId Encoder_QueueHandle;
 osMessageQId Display_QueueHandle;
 
 SemaphoreHandle_t motor_start_semHandle;
 SemaphoreHandle_t motor_stop_semHandle;
+
+extern PN532 pn532;
+extern TIM_HandleTypeDef htim1;
+
+uint8_t volume = 2;
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
 osThreadId TaskMotorHandle;
@@ -207,7 +217,27 @@ void StartTaskMotor(void const * argument)
 	/* Infinite loop */
 	for(;;)
 	{
-		osDelay(1);
+		/* Block until Player signals motor to start */
+		osSemaphoreWait(motor_start_semHandle, osWaitForever);
+
+		/* Clear any pending stop signal */
+		xSemaphoreTake(motor_stop_semHandle, 0);
+
+		for (;;)
+		{
+			stepper_Step(true);
+			osDelay(1);
+
+			/* Non-blocking check for stop signal from Player */
+			if (osSemaphoreWait(motor_stop_semHandle, 0) == osOK)
+				break;
+		}
+
+		/* De-energize all coils to save power */
+		stepper_Stop();
+
+		/* Clear any pending start signal that arrived during stop */
+		xSemaphoreTake(motor_start_semHandle, 0);
 	}
 	/* USER CODE END StartTaskMotor */
 }
@@ -222,10 +252,43 @@ void StartTaskMotor(void const * argument)
 void StartTaskRFID(void const * argument)
 {
 	/* USER CODE BEGIN StartTaskRFID */
+	uint8_t uid[MIFARE_UID_MAX_LENGTH];
+	int32_t uid_len = 0;
+	bool tag_was_present = false;
+	static uint64_t last_tag_id = 0;
+
+	/* Initialize PN532 */
+	osMutexWait(i2c_mutexHandle, osWaitForever);
+	PN532_SamConfiguration(&pn532);
+	osMutexRelease(i2c_mutexHandle);
 	/* Infinite loop */
 	for(;;)
 	{
-		osDelay(1);
+		osMutexWait(i2c_mutexHandle, osWaitForever);
+	    uid_len = PN532_ReadPassiveTarget(&pn532, uid, PN532_MIFARE_ISO14443A, 100);
+	    osMutexRelease(i2c_mutexHandle);
+
+	    if (uid_len > 0)
+	    {
+	        uint64_t current_id = uid_to_u64(uid, uid_len);
+
+	        if (current_id != last_tag_id)
+	        {
+	            last_tag_id = current_id;
+
+	            rfid_msg_t msg;
+	            msg.uid = current_id;
+
+	            if (current_id == TAG_1)      msg.track_number = 1;
+	            else if (current_id == TAG_2) msg.track_number = 2;
+	            else                          msg.track_number = -1;
+
+	            xQueueOverwrite(RFID_QueueHandle, &msg);
+	            last_tag_id = 0;
+	        }
+	    }
+
+	    osDelay(50);
 	}
 	/* USER CODE END StartTaskRFID */
 }
@@ -240,9 +303,33 @@ void StartTaskRFID(void const * argument)
 void StartTaskEncoder(void const * argument)
 {
 	/* USER CODE BEGIN StartTaskEncoder */
+	static int32_t last_count = 0;
+	int32_t count = 0;
+	int32_t diff = 0;
+	int8_t delta = 0;
 	/* Infinite loop */
 	for(;;)
 	{
+		count = (int32_t)(uint16_t)__HAL_TIM_GET_COUNTER(&htim1);
+		diff = count - last_count;
+
+		/* Handle counter overflow/underflow */
+		if (diff > 32767)  diff -= 65536;
+		if (diff < -32767) diff += 65536;
+
+		if (diff >= 2)
+		{
+			delta = 1;
+			xQueueSend(Encoder_QueueHandle, &delta, 0);
+			last_count = count;
+		}
+		else if (diff <= -2)
+		{
+			delta = -1;
+			xQueueSend(Encoder_QueueHandle, &delta, 0);
+			last_count = count;
+		}
+
 		osDelay(1);
 	}
 	/* USER CODE END StartTaskEncoder */
@@ -258,10 +345,122 @@ void StartTaskEncoder(void const * argument)
 void StartTaskPlayer(void const * argument)
 {
 	/* USER CODE BEGIN StartTaskPlayer */
+	rfid_msg_t rfid_msg;
+	int8_t encoder_delta = 0;
+	bool is_paused = false;
+	int8_t current_track = -1;
 	/* Infinite loop */
 	for(;;)
 	{
-		osDelay(1);
+        /* Check for new RFID event */
+        if (xQueueReceive(RFID_QueueHandle, &rfid_msg, 0) == pdTRUE)
+        {
+            if (rfid_msg.track_number >= 0)
+            {
+                /* New tag placed - start playback */
+                current_track = rfid_msg.track_number;
+                is_paused = false;
+
+                dfplayer_SetTrakNumber(current_track);
+
+                /* Clear pending stop signal before starting motor */
+                xSemaphoreTake(motor_stop_semHandle, 0);
+                osSemaphoreRelease(motor_start_semHandle);
+
+                display_msg_t disp;
+                disp.volume = volume;
+                disp.is_paused = 0;
+                disp.motor_running = 1;
+
+                if (current_track == 1)
+                    strncpy(disp.track_name, "BTS - Spine Breaker", 32);
+                else if (current_track == 2)
+                    strncpy(disp.track_name, "J-Hope - Arson", 32);
+                else
+                    strncpy(disp.track_name, "Unknown", 32);
+
+                xQueueSend(Display_QueueHandle, &disp, 0);
+            }
+            else
+            {
+                /* Tag removed - stop playback and motor */
+                current_track = -1;
+                is_paused = false;
+
+                dfplayer_Stop();
+                osSemaphoreRelease(motor_stop_semHandle);
+
+                display_msg_t disp;
+                disp.volume = volume;
+                disp.is_paused = 0;
+                disp.motor_running = 0;
+                strncpy(disp.track_name, "Waiting...", 32);
+                xQueueSend(Display_QueueHandle, &disp, 0);
+            }
+        }
+
+        /* Drain all encoder messages and update volume once */
+        bool volume_changed = false;
+        while (xQueueReceive(Encoder_QueueHandle, &encoder_delta, 0) == pdTRUE)
+        {
+            if (encoder_delta > 0 && volume < 30) volume++;
+            if (encoder_delta < 0 && volume > 0)  volume--;
+            volume_changed = true;
+        }
+
+        if (volume_changed)
+        {
+            dfplayer_SetVolume(volume);
+
+            display_msg_t disp;
+            disp.volume = volume;
+            disp.is_paused = is_paused;
+            disp.motor_running = (current_track >= 0);
+            if (current_track == 1)
+                strncpy(disp.track_name, "BTS - Spine Breaker", 32);
+            else if (current_track == 2)
+                strncpy(disp.track_name, "J-Hope - Arson", 32);
+            else
+                strncpy(disp.track_name, "Waiting...", 32);
+
+            xQueueSend(Display_QueueHandle, &disp, 0);
+        }
+
+        /* Check for pause semaphore from EXTI */
+        if (osSemaphoreWait(pause_semHandle, 0) == osOK)
+        {
+            if (current_track >= 0)
+            {
+                is_paused = !is_paused;
+
+                if (is_paused)
+                {
+                    dfplayer_Pause();
+                    osSemaphoreRelease(motor_stop_semHandle);
+                }
+                else
+                {
+                    dfplayer_Play();
+                    xSemaphoreTake(motor_stop_semHandle, 0);
+                    osSemaphoreRelease(motor_start_semHandle);
+                }
+
+                display_msg_t disp;
+                disp.volume = volume;
+                disp.is_paused = is_paused;
+                disp.motor_running = !is_paused;
+                if (current_track == 1)
+                    strncpy(disp.track_name, "BTS - Spine Breaker", 32);
+                else if (current_track == 2)
+                    strncpy(disp.track_name, "J-Hope - Arson", 32);
+                else
+                    strncpy(disp.track_name, "Waiting...", 32);
+
+                xQueueSend(Display_QueueHandle, &disp, 0);
+            }
+        }
+
+        osDelay(10);
 	}
 	/* USER CODE END StartTaskPlayer */
 }
@@ -276,16 +475,57 @@ void StartTaskPlayer(void const * argument)
 void StartTaskDisplay(void const * argument)
 {
 	/* USER CODE BEGIN StartTaskDisplay */
+	display_msg_t msg;
 	/* Infinite loop */
 	for(;;)
 	{
-		osDelay(1);
+		/* Block until Player sends a display update */
+		if (xQueueReceive(Display_QueueHandle, &msg, osWaitForever) == pdTRUE)
+		{
+			osMutexWait(i2c_mutexHandle, osWaitForever);
+
+			SSD1306_Clear();
+
+			SSD1306_SetCursor(0, 0);
+			SSD1306_WriteString(msg.track_name);
+
+			char status[22];
+			sprintf(status, "Vol:%02d %s", msg.volume,
+			        msg.is_paused ? "Paused " : "Playing");
+			SSD1306_SetCursor(0, 16);
+			SSD1306_WriteString(status);
+
+			SSD1306_UpdateScreen();
+
+			osMutexRelease(i2c_mutexHandle);
+
+			if (msg.motor_running && !msg.is_paused)
+			{
+			    /* Playing - full brightness */
+			    WS2812B_Fill(255, 0, 128);
+			}
+			else if (!msg.motor_running && msg.is_paused)
+			{
+			    /* Paused - dim */
+				WS2812B_Fill(60, 0, 30);
+			}
+			else
+			{
+			    /* Stopped - off */
+			    WS2812B_Clear();
+			}
+			WS2812B_Show();
+		}
 	}
 	/* USER CODE END StartTaskDisplay */
 }
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	if (GPIO_Pin == GPIO_PIN_2) {
+		osSemaphoreRelease(pause_semHandle);
+	}
+}
 /* USER CODE END Application */
 
