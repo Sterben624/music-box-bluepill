@@ -15,7 +15,7 @@
 #include "ws2812b.h"
 #include "main.h"
 
-extern TIM_HandleTypeDef htim17;
+extern TIM_HandleTypeDef htim2;
 
 /* DMA PWM buffer — uint16_t matches Half Word DMA setting */
 static uint16_t dma_buf[WS2812B_BUF_SIZE];
@@ -102,7 +102,7 @@ void WS2812B_Show(void)
 
     transfer_complete = 0;
     rebuild_dma_buf();
-    HAL_TIM_PWM_Start_DMA(&htim17, TIM_CHANNEL_1, (uint32_t *)dma_buf, WS2812B_BUF_SIZE);
+    HAL_TIM_PWM_Start_DMA(&htim2, TIM_CHANNEL_1, (uint32_t *)dma_buf, WS2812B_BUF_SIZE);
 }
 
 uint8_t WS2812B_IsReady(void)
@@ -116,9 +116,9 @@ uint8_t WS2812B_IsReady(void)
  */
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
-    if (htim->Instance == TIM17)
+    if (htim->Instance == TIM2)
     {
-        HAL_TIM_PWM_Stop_DMA(&htim17, TIM_CHANNEL_1);
+        HAL_TIM_PWM_Stop_DMA(&htim2, TIM_CHANNEL_1);
         transfer_complete = 1;
     }
 }
