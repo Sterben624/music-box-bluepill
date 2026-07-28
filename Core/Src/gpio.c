@@ -61,6 +61,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(SW_KY040_EXTI_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : DF_BUSY_Pin */
+  GPIO_InitStruct.Pin = DF_BUSY_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(DF_BUSY_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : PN532_RST_Pin PN532_REQ_Pin */
   GPIO_InitStruct.Pin = PN532_RST_Pin|PN532_REQ_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;

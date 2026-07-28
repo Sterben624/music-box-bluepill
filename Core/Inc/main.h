@@ -60,6 +60,8 @@ void Error_Handler(void);
 #define SW_KY040_EXTI_Pin GPIO_PIN_2
 #define SW_KY040_EXTI_GPIO_Port GPIOA
 #define SW_KY040_EXTI_EXTI_IRQn EXTI2_IRQn
+#define DF_BUSY_Pin GPIO_PIN_3
+#define DF_BUSY_GPIO_Port GPIOA
 #define PN532_RST_Pin GPIO_PIN_5
 #define PN532_RST_GPIO_Port GPIOA
 #define PN532_REQ_Pin GPIO_PIN_6

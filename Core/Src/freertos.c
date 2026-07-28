@@ -127,79 +127,79 @@ void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackTy
 /* USER CODE END GET_IDLE_TASK_MEMORY */
 
 /**
- * @brief  FreeRTOS initialization
- * @param  None
- * @retval None
- */
+  * @brief  FreeRTOS initialization
+  * @param  None
+  * @retval None
+  */
 void MX_FREERTOS_Init(void) {
-	/* USER CODE BEGIN Init */
+  /* USER CODE BEGIN Init */
 	healthEventGroup = xEventGroupCreate();
-	/* USER CODE END Init */
-	/* Create the mutex(es) */
-	/* definition and creation of i2c_mutex */
-	osMutexDef(i2c_mutex);
-	i2c_mutexHandle = osMutexCreate(osMutex(i2c_mutex));
+  /* USER CODE END Init */
+  /* Create the mutex(es) */
+  /* definition and creation of i2c_mutex */
+  osMutexDef(i2c_mutex);
+  i2c_mutexHandle = osMutexCreate(osMutex(i2c_mutex));
 
-	/* USER CODE BEGIN RTOS_MUTEX */
+  /* USER CODE BEGIN RTOS_MUTEX */
 	/* add mutexes, ... */
-	/* USER CODE END RTOS_MUTEX */
+  /* USER CODE END RTOS_MUTEX */
 
-	/* Create the semaphores(s) */
-	/* definition and creation of pause_sem */
-	osSemaphoreDef(pause_sem);
-	pause_semHandle = osSemaphoreCreate(osSemaphore(pause_sem), 1);
+  /* Create the semaphores(s) */
+  /* definition and creation of pause_sem */
+  osSemaphoreDef(pause_sem);
+  pause_semHandle = osSemaphoreCreate(osSemaphore(pause_sem), 1);
 
-	/* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
 	/* Using xSemaphoreCreateBinary instead of osSemaphoreCreate:
 	 * CMSIS V1 counting semaphore hangs on Release when already Available.
 	 * True binary semaphore returns pdFAIL gracefully instead. */
 	motor_start_semHandle = xSemaphoreCreateBinary();
 	motor_stop_semHandle = xSemaphoreCreateBinary();
-	/* USER CODE END RTOS_SEMAPHORES */
+  /* USER CODE END RTOS_SEMAPHORES */
 
-	/* USER CODE BEGIN RTOS_TIMERS */
+  /* USER CODE BEGIN RTOS_TIMERS */
 	/* start timers, add new ones, ... */
-	/* USER CODE END RTOS_TIMERS */
+  /* USER CODE END RTOS_TIMERS */
 
-	/* USER CODE BEGIN RTOS_QUEUES */
+  /* USER CODE BEGIN RTOS_QUEUES */
 	/* Custom item sizes require direct FreeRTOS API instead of osMessageQDef */
 	RFID_QueueHandle = xQueueCreate(1, sizeof(rfid_msg_t));
 	Encoder_QueueHandle = xQueueCreate(4, sizeof(int8_t));
 	Display_QueueHandle = xQueueCreate(2, sizeof(display_msg_t));
-	/* USER CODE END RTOS_QUEUES */
+  /* USER CODE END RTOS_QUEUES */
 
-	/* Create the thread(s) */
-	/* definition and creation of defaultTask */
-	osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
-	defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+  /* Create the thread(s) */
+  /* definition and creation of defaultTask */
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
-	/* definition and creation of TaskMotor */
-	osThreadDef(TaskMotor, StartTaskMotor, osPriorityAboveNormal, 0, 128);
-	TaskMotorHandle = osThreadCreate(osThread(TaskMotor), NULL);
+  /* definition and creation of TaskMotor */
+  osThreadDef(TaskMotor, StartTaskMotor, osPriorityAboveNormal, 0, 128);
+  TaskMotorHandle = osThreadCreate(osThread(TaskMotor), NULL);
 
-	/* definition and creation of TaskRFID */
-	osThreadDef(TaskRFID, StartTaskRFID, osPriorityNormal, 0, 256);
-	TaskRFIDHandle = osThreadCreate(osThread(TaskRFID), NULL);
+  /* definition and creation of TaskRFID */
+  osThreadDef(TaskRFID, StartTaskRFID, osPriorityNormal, 0, 256);
+  TaskRFIDHandle = osThreadCreate(osThread(TaskRFID), NULL);
 
-	/* definition and creation of TaskEncoder */
-	osThreadDef(TaskEncoder, StartTaskEncoder, osPriorityNormal, 0, 128);
-	TaskEncoderHandle = osThreadCreate(osThread(TaskEncoder), NULL);
+  /* definition and creation of TaskEncoder */
+  osThreadDef(TaskEncoder, StartTaskEncoder, osPriorityNormal, 0, 128);
+  TaskEncoderHandle = osThreadCreate(osThread(TaskEncoder), NULL);
 
-	/* definition and creation of TaskPlayer */
-	osThreadDef(TaskPlayer, StartTaskPlayer, osPriorityNormal, 0, 256);
-	TaskPlayerHandle = osThreadCreate(osThread(TaskPlayer), NULL);
+  /* definition and creation of TaskPlayer */
+  osThreadDef(TaskPlayer, StartTaskPlayer, osPriorityNormal, 0, 256);
+  TaskPlayerHandle = osThreadCreate(osThread(TaskPlayer), NULL);
 
-	/* definition and creation of TaskDisplay */
-	osThreadDef(TaskDisplay, StartTaskDisplay, osPriorityLow, 0, 256);
-	TaskDisplayHandle = osThreadCreate(osThread(TaskDisplay), NULL);
+  /* definition and creation of TaskDisplay */
+  osThreadDef(TaskDisplay, StartTaskDisplay, osPriorityLow, 0, 256);
+  TaskDisplayHandle = osThreadCreate(osThread(TaskDisplay), NULL);
 
-	/* definition and creation of TaskHealth */
-	osThreadDef(TaskHealth, StartTaskHealth, osPriorityHigh, 0, 128);
-	TaskHealthHandle = osThreadCreate(osThread(TaskHealth), NULL);
+  /* definition and creation of TaskHealth */
+  osThreadDef(TaskHealth, StartTaskHealth, osPriorityHigh, 0, 128);
+  TaskHealthHandle = osThreadCreate(osThread(TaskHealth), NULL);
 
-	/* USER CODE BEGIN RTOS_THREADS */
+  /* USER CODE BEGIN RTOS_THREADS */
 	/* add threads, ... */
-	/* USER CODE END RTOS_THREADS */
+  /* USER CODE END RTOS_THREADS */
 
 }
 
@@ -212,13 +212,13 @@ void MX_FREERTOS_Init(void) {
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
 {
-	/* USER CODE BEGIN StartDefaultTask */
+  /* USER CODE BEGIN StartDefaultTask */
 	/* Infinite loop */
 	for(;;)
 	{
 		osDelay(1);
 	}
-	/* USER CODE END StartDefaultTask */
+  /* USER CODE END StartDefaultTask */
 }
 
 /* USER CODE BEGIN Header_StartTaskMotor */
@@ -230,7 +230,7 @@ void StartDefaultTask(void const * argument)
 /* USER CODE END Header_StartTaskMotor */
 void StartTaskMotor(void const * argument)
 {
-	/* USER CODE BEGIN StartTaskMotor */
+  /* USER CODE BEGIN StartTaskMotor */
 	/* Infinite loop */
 	for(;;)
 	{
@@ -260,7 +260,7 @@ void StartTaskMotor(void const * argument)
 		/* Clear any pending start signal that arrived during stop */
 		xSemaphoreTake(motor_start_semHandle, 0);
 	}
-	/* USER CODE END StartTaskMotor */
+  /* USER CODE END StartTaskMotor */
 }
 
 /* USER CODE BEGIN Header_StartTaskRFID */
@@ -272,7 +272,7 @@ void StartTaskMotor(void const * argument)
 /* USER CODE END Header_StartTaskRFID */
 void StartTaskRFID(void const * argument)
 {
-	/* USER CODE BEGIN StartTaskRFID */
+  /* USER CODE BEGIN StartTaskRFID */
 	uint8_t uid[MIFARE_UID_MAX_LENGTH];
 	int32_t uid_len = 0;
 	static uint64_t last_tag_id = 0;
@@ -312,7 +312,7 @@ void StartTaskRFID(void const * argument)
 
 		osDelay(50);
 	}
-	/* USER CODE END StartTaskRFID */
+  /* USER CODE END StartTaskRFID */
 }
 
 /* USER CODE BEGIN Header_StartTaskEncoder */
@@ -324,7 +324,7 @@ void StartTaskRFID(void const * argument)
 /* USER CODE END Header_StartTaskEncoder */
 void StartTaskEncoder(void const * argument)
 {
-	/* USER CODE BEGIN StartTaskEncoder */
+  /* USER CODE BEGIN StartTaskEncoder */
 	static int32_t last_count = 0;
 	int32_t count = 0;
 	int32_t diff = 0;
@@ -354,7 +354,7 @@ void StartTaskEncoder(void const * argument)
 
 		osDelay(1);
 	}
-	/* USER CODE END StartTaskEncoder */
+  /* USER CODE END StartTaskEncoder */
 }
 
 /* USER CODE BEGIN Header_StartTaskPlayer */
@@ -366,7 +366,7 @@ void StartTaskEncoder(void const * argument)
 /* USER CODE END Header_StartTaskPlayer */
 void StartTaskPlayer(void const * argument)
 {
-	/* USER CODE BEGIN StartTaskPlayer */
+  /* USER CODE BEGIN StartTaskPlayer */
 	rfid_msg_t rfid_msg;
 	int8_t encoder_delta = 0;
 	bool is_paused = false;
@@ -486,7 +486,7 @@ void StartTaskPlayer(void const * argument)
 
 		osDelay(10);
 	}
-	/* USER CODE END StartTaskPlayer */
+  /* USER CODE END StartTaskPlayer */
 }
 
 /* USER CODE BEGIN Header_StartTaskDisplay */
@@ -498,7 +498,7 @@ void StartTaskPlayer(void const * argument)
 /* USER CODE END Header_StartTaskDisplay */
 void StartTaskDisplay(void const * argument)
 {
-	/* USER CODE BEGIN StartTaskDisplay */
+  /* USER CODE BEGIN StartTaskDisplay */
 	display_msg_t msg;
 	/* Infinite loop */
 	for(;;)
@@ -542,7 +542,7 @@ void StartTaskDisplay(void const * argument)
 		}
 		xEventGroupSetBits(healthEventGroup, HEALTH_WS_BIT);
 	}
-	/* USER CODE END StartTaskDisplay */
+  /* USER CODE END StartTaskDisplay */
 }
 
 /* USER CODE BEGIN Header_StartTaskHealth */
@@ -554,7 +554,7 @@ void StartTaskDisplay(void const * argument)
 /* USER CODE END Header_StartTaskHealth */
 void StartTaskHealth(void const * argument)
 {
-	/* USER CODE BEGIN StartTaskHealth */
+  /* USER CODE BEGIN StartTaskHealth */
 	/* Infinite loop */
 	for(;;)
 	{
@@ -573,7 +573,7 @@ void StartTaskHealth(void const * argument)
 
 		osDelay(200);
 	}
-	/* USER CODE END StartTaskHealth */
+  /* USER CODE END StartTaskHealth */
 }
 
 /* Private application code --------------------------------------------------*/
