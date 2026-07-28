@@ -82,6 +82,7 @@ static EventGroupHandle_t healthEventGroup;
 
 extern PN532 pn532;
 extern TIM_HandleTypeDef htim1;
+extern IWDG_HandleTypeDef hiwdg;
 
 uint8_t volume = 2;
 /* USER CODE END Variables */
@@ -568,7 +569,7 @@ void StartTaskHealth(void const * argument)
 
 		if ((bits & HEALTH_ALL_BITS) == HEALTH_ALL_BITS)
 		{
-			HAL_IWDG_Refresh();
+			HAL_IWDG_Refresh(&hiwdg);
 		}
 
 		osDelay(200);
