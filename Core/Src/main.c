@@ -103,6 +103,10 @@ int main(void)
   MX_TIM2_Init();
   MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
+	#if defined(DBGMCU_CR_DBG_IWDG_STOP)
+		__HAL_DBGMCU_FREEZE_IWDG();
+	#endif
+
 	SSD1306_Init();
 	SSD1306_Clear();
 	SSD1306_WriteString("Waiting...");
