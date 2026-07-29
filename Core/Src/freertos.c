@@ -47,6 +47,7 @@ typedef struct {
 	uint8_t volume;
 	uint8_t is_paused;
 	uint8_t motor_running;
+	uint8_t is_ended;
 } display_msg_t;
 /* USER CODE END PTD */
 
@@ -98,12 +99,13 @@ osSemaphoreId pause_semHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-static void SendDisplayUpdate(int8_t track, uint8_t vol, bool paused, bool motor_run)
+static void SendDisplayUpdate(int8_t track, uint8_t vol, bool paused, bool motor_run, bool ended)
 {
     display_msg_t disp;
     disp.volume = vol;
     disp.is_paused = paused;
     disp.motor_running = motor_run;
+    disp.is_ended = ended;
 
     if (track == 1)
         strncpy(disp.track_name, "BTS - Spine Breaker", 32);
@@ -399,6 +401,7 @@ void StartTaskPlayer(void const * argument)
 	int8_t encoder_delta = 0;
 	bool is_paused = false;
 	int8_t current_track = -1;
+	static bool was_busy = false;
 	/* Infinite loop */
 	for(;;)
 	{
@@ -417,7 +420,7 @@ void StartTaskPlayer(void const * argument)
 					xSemaphoreTake(motor_stop_semHandle, 0);
 					osSemaphoreRelease(motor_start_semHandle);
 
-					SendDisplayUpdate(current_track, volume, is_paused, current_track >= 0);
+					SendDisplayUpdate(current_track, volume, is_paused, current_track >= 0, false);
 				}
 				else
 				{
@@ -431,7 +434,7 @@ void StartTaskPlayer(void const * argument)
 					xSemaphoreTake(motor_stop_semHandle, 0);
 					osSemaphoreRelease(motor_start_semHandle);
 
-					SendDisplayUpdate(current_track, volume, is_paused, current_track >= 0);
+					SendDisplayUpdate(current_track, volume, is_paused, current_track >= 0, false);
 				}
 			}
 			else
@@ -444,7 +447,7 @@ void StartTaskPlayer(void const * argument)
 				dfplayer_Pause();
 				osSemaphoreRelease(motor_stop_semHandle);
 
-				SendDisplayUpdate(current_track, volume, is_paused, current_track >= 0);
+				SendDisplayUpdate(current_track, volume, is_paused, current_track >= 0, false);
 			}
 		}
 
@@ -461,7 +464,7 @@ void StartTaskPlayer(void const * argument)
 		{
 			dfplayer_SetVolume(volume);
 
-			SendDisplayUpdate(current_track, volume, is_paused, current_track >= 0);
+			SendDisplayUpdate(current_track, volume, is_paused, current_track >= 0, false);
 		}
 
 		/* Check for pause semaphore from EXTI */
@@ -483,9 +486,24 @@ void StartTaskPlayer(void const * argument)
 					osSemaphoreRelease(motor_start_semHandle);
 				}
 
-				SendDisplayUpdate(current_track, volume, is_paused, current_track >= 0);
+				SendDisplayUpdate(current_track, volume, is_paused, current_track >= 0, false);
 			}
 		}
+
+		/* Check whether the track finished on its own (BUSY went idle while
+		 * we were actively playing, not paused/stopped by us) */
+		bool is_busy = (HAL_GPIO_ReadPin(DF_BUSY_GPIO_Port, DF_BUSY_Pin) == GPIO_PIN_RESET);
+
+		if (was_busy && !is_busy && current_track >= 0 && !is_paused)
+		{
+			/* Track ended naturally - stop the motor so it doesn't spin
+			 * forever if the tag is left in place; let TaskDisplay turn
+			 * the LED off and show the "Ended" status */
+			osSemaphoreRelease(motor_stop_semHandle);
+
+			SendDisplayUpdate(current_track, volume, false, false, true);
+		}
+		was_busy = is_busy;
 
 		xEventGroupSetBits(healthEventGroup, HEALTH_DFPLAYER_BIT);
 
@@ -493,6 +511,7 @@ void StartTaskPlayer(void const * argument)
 	}
   /* USER CODE END StartTaskPlayer */
 }
+
 /* USER CODE BEGIN Header_StartTaskDisplay */
 /**
  * @brief Function implementing the TaskDisplay thread.
@@ -518,8 +537,15 @@ void StartTaskDisplay(void const * argument)
 			SSD1306_WriteString(msg.track_name);
 
 			char status[22];
-			sprintf(status, "Vol:%02d %s", msg.volume,
-					msg.is_paused ? "Paused " : "Playing");
+			if (msg.is_ended)
+			{
+				sprintf(status, "Vol:%02d Ended", msg.volume);
+			}
+			else
+			{
+				sprintf(status, "Vol:%02d %s", msg.volume,
+						msg.is_paused ? "Paused " : "Playing");
+			}
 			SSD1306_SetCursor(0, 16);
 			SSD1306_WriteString(status);
 
@@ -527,7 +553,12 @@ void StartTaskDisplay(void const * argument)
 
 			osMutexRelease(i2c_mutexHandle);
 
-			if (msg.motor_running && !msg.is_paused)
+			if (msg.is_ended)
+			{
+				/* Track finished on its own */
+				WS2812B_Clear();
+			}
+			else if (msg.motor_running && !msg.is_paused)
 			{
 				/* Playing - full brightness */
 				WS2812B_Fill(255, 0, 128);
@@ -588,4 +619,3 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	}
 }
 /* USER CODE END Application */
-
