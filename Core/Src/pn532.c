@@ -30,6 +30,7 @@
 
 #include <stdio.h>
 #include "pn532.h"
+#include "cmsis_os.h"
 
 const uint8_t PN532_ACK[] = {0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00};
 const uint8_t PN532_FRAME_START[] = {0x00, 0x00, 0xFF};
@@ -255,17 +256,6 @@ int PN532_ReadPassiveTarget(
 	for (uint8_t i = 0; i < buff[5]; i++) {
 		response[i] = buff[6 + i];
 	}
-
-    /* Reactivate tag with InSelect then release it,
-     * so the next InListPassiveTarget can find it again */
-    uint8_t sel_params[] = {0x01};
-    uint8_t sel_response[1];
-    PN532_CallFunction(pn532, 0x54, sel_response, 1, sel_params, 1, 100);
-
-    uint8_t rel_params[] = {0x01};
-    uint8_t rel_response[1];
-    PN532_CallFunction(pn532, 0x52, rel_response, 1, rel_params, 1, 100);
-
     return buff[5];
 }
 
