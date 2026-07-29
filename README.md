@@ -23,6 +23,16 @@ which is closer to the intended final hardware for this build.
   reference repo built specifically to work through these quirks before
   bringing the setup into this project.
 
+## Known quirks / troubleshooting notes
+
+- **PN532 repeated-scan instability**: initial diagnosis pointed to protocol
+  issues (InSelect/InRelease misuse, wait_ready timeout too short for
+  InListPassiveTarget) — both were real bugs and got fixed. *Possible*
+  additional/root cause: the tag was placed very close to the reader
+  antenna, which can distort the response at close range. Not confirmed —
+  worth testing tag placement distance if the issue resurfaces after the
+  protocol fixes.
+
 ## Note
 
 This README was drafted with the help of Claude, after the PlatformIO /
