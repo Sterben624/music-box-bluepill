@@ -37,6 +37,7 @@
 
 #include "stepper.h"
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Half-step sequence table: each row is one step, columns are IN1..IN4 */
 static const uint8_t half_step_sequence[8][4] = {
