@@ -33,6 +33,16 @@ which is closer to the intended final hardware for this build.
   worth testing tag placement distance if the issue resurfaces after the
   protocol fixes.
 
+## Demo
+
+
+
+https://github.com/user-attachments/assets/8e9a86df-c4bf-41b1-bb8a-8985c371bc28
+
+
+
+
+
 ## Note
 
 This README was drafted with the help of Claude, after the PlatformIO /
